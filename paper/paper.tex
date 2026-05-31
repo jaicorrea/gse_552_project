@@ -1,0 +1,151 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{setspace}
+\onehalfspacing
+
+\title{Replicating Table~1 (Panels A \& B) from\\
+       Akhtari, Bau, and Lalibért{\'e} (2020)}
+\author{Jai Correa}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+% -----------------------------------------------------------------------
+\section{The Original Paper}
+% -----------------------------------------------------------------------
+
+Akhtari, Mitra, Natalie Bau, and Jean-William P.\ Lalibért{\'e}. 2020.
+``Affirmative Action and Pre-College Human Capital.''
+\textit{NBER Working Paper} No.\ 27779.
+\url{http://www.nber.org/papers/w27779}
+
+The paper studies the effect of the 2003 Supreme Court ruling in
+\textit{Grutter v.\ Bollinger}, which reinstated race-conscious admissions
+at public universities in Texas, Louisiana, and Mississippi after a
+seven-year ban under \textit{Hopwood v.\ Texas} (1996).
+The central research question is whether affirmative action (AA) policies
+affect students' \emph{pre-college} human capital investment—specifically
+SAT scores, grades, and attendance—not just outcomes \emph{after} college
+admission.
+
+The empirical strategy exploits the quasi-experimental policy reversal to
+estimate the average effects of AA reinstatement on SAT scores using two
+complementary approaches: difference-in-differences (DiD), comparing score
+changes in treated states (TX, LA, MS) to control states before and after
+2003, and a synthetic-control method to account for differential pre-trends.
+
+% -----------------------------------------------------------------------
+\section{The Result of Interest}
+% -----------------------------------------------------------------------
+
+I replicate \textbf{Table~1, Panels A and B} (columns 1 and 2),
+which reports difference-in-differences estimates of the effect of AA
+reinstatement on mean math and verbal SAT scores—separately for
+underrepresented minorities (URMs: Black and Hispanic students) and for
+white students, using a panel of state--race--year cells from 1998 to 2010.
+
+Panel A is the headline result: reinstating AA increased mean math SAT
+scores for URMs by approximately 8 points (about 0.07 standard deviations),
+a statistically significant improvement. Panel B shows that white students'
+math scores also increased (by about 4 points), consistent with positive
+spillovers or intensified competition. Both findings are among the most
+widely discussed results of the paper and directly test a key prediction of
+the theoretical model.
+
+% -----------------------------------------------------------------------
+\section{Data and Methods}
+% -----------------------------------------------------------------------
+
+\textbf{Data.}\ The analysis uses a panel of mean math and verbal SAT
+scores at the state--race--year level, compiled from College Board publicly
+available reports covering 1998--2010. The data are available via the
+replication package at
+\url{https://www.openicpsr.org/openicpsr/project/146381/version/V1/view}.
+The raw data file is \texttt{SAT\_workfingfile.dta}; \texttt{code/preprocess.py}
+coerces stored-as-object numeric columns and writes a clean CSV to
+\texttt{temp/clean\_data.csv}.
+
+\textbf{Identification.}\ The identifying assumption is parallel trends:
+absent the policy change, URM and white SAT scores in treated states would
+have evolved at the same rate as in control states. The empirical model is
+
+\begin{equation}
+  y_{ket} = \beta_{\text{DD}}\bigl(\text{TreatedState}_{k}
+            \times \text{Post2003}_{t}\bigr)
+            + \gamma\, \text{Ban}_{kt}
+            + \alpha_{k} + \alpha_{t} + \alpha_{e}
+            + \varepsilon_{ket},
+  \label{eq:did}
+\end{equation}
+
+\noindent where $y_{ket}$ is the mean SAT score for racial group $e$ in
+state $k$ in year $t$; $\text{TreatedState}_{k}$ is 1 for TX, LA, and MS;
+$\text{Post2003}_{t}$ is 1 for years after 2003; $\text{Ban}_{kt}$ controls
+for AA-ban policy changes in control states; and $\alpha_{k}$, $\alpha_{t}$,
+$\alpha_{e}$ are state, year, and race fixed effects. Cells are weighted by
+the number of test-takers, and standard errors are clustered at the state level.
+Equation~\eqref{eq:did} is estimated separately for URMs (Panel A) and whites
+(Panel B) using \texttt{code/analysis.py}, which writes the table fragment to
+\texttt{output/tables/table1\_panels\_ab.tex}.
+
+% -----------------------------------------------------------------------
+\section{Replication Results}
+% -----------------------------------------------------------------------
+
+Table~\ref{tab:table1_ab} presents my replication.
+
+\input{../output/tables/table1_panels_ab.tex}
+
+The point estimates match the paper's Table~1 to three decimal places:
+Panel A math coefficient = 8.009 (paper: 8.009) and Panel B math
+coefficient = 4.048 (paper: 4.048). The R-squared values and observation
+counts are identical. Standard errors are slightly larger than those reported
+in the paper (e.g., 1.565 vs.\ 1.544 for Panel A math). This discrepancy
+arises because Stata's \texttt{reghdfe} applies a degrees-of-freedom
+correction that accounts for the number of absorbed fixed effects when
+computing cluster-robust standard errors, while \texttt{statsmodels} uses the
+conventional sandwich estimator without that adjustment. This is a well-known
+cross-software difference and does not affect the point estimates or
+statistical significance conclusions.
+
+% -----------------------------------------------------------------------
+\section{What I Learned}
+% -----------------------------------------------------------------------
+
+The easiest part of the replication was matching the point estimates: once
+I identified the correct sample restrictions (\texttt{BH==1} or
+\texttt{W==1}), the correct weight variable (\texttt{takesattotalN}), and
+the correct control (\texttt{ban}), the DiD coefficients matched the paper
+exactly. The working file already contained all derived variables (treatment
+indicators, fixed-effects IDs, weights), so no complicated data construction
+was necessary.
+
+The hardest part was data preparation. The raw \texttt{.dta} file stores
+numeric score and count columns as Stata string/object types because some
+cells contain suppressed values. Converting these to floating-point with
+\texttt{pd.to\_numeric(errors=`coerce')} was essential before any regression
+could run. This kind of silent type issue is easy to miss and would produce
+either an error or silently wrong results.
+
+The most interesting thing I learned from doing the replication rather than
+just reading the paper is how important the ``ban'' control variable is:
+several control states enacted their own AA bans during the study period,
+and without controlling for those changes the DiD estimate conflates the
+\textit{Grutter} reinstatement with those independent policy changes. The
+replication makes the design of the estimator far more concrete than reading
+about it in the abstract.
+
+% -----------------------------------------------------------------------
+\begin{thebibliography}{9}
+\bibitem{akhtari2020}
+  Akhtari, Mitra, Natalie Bau, and Jean-William P.\ Lalibért{\'e}. 2020.
+  ``Affirmative Action and Pre-College Human Capital.''
+  \textit{NBER Working Paper} No.\ 27779.
+\end{thebibliography}
+
+\end{document}
