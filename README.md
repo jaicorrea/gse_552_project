@@ -71,7 +71,7 @@ See `input/data_dictionary.md` for variable descriptions.
 Install Python dependencies:
 
 ```bash
-pip install pandas numpy statsmodels pyreadstat
+pip install pandas numpy pyfixest pyreadstat
 ```
 
 ---

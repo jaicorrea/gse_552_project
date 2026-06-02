@@ -101,21 +101,18 @@ Table~\ref{tab:table1_ab} presents my replication.
 
 \input{../output/tables/table1_panels_ab.tex}
 
-The point estimates match the paper's Table~1 exactly:
-Panel A math DD coefficient $= \input{../output/tables/pa_math_coef.tex}$
-(paper: $\input{../output/tables/pa_math_coef.tex}$) and
-Panel B math DD coefficient $= \input{../output/tables/pb_math_coef.tex}$
-(paper: $\input{../output/tables/pb_math_coef.tex}$).
-The $R^2$ values and observation counts are identical to those in the paper.
-Standard errors are slightly larger than those reported
-(e.g., $\input{../output/tables/pa_math_se.tex}$
-vs.\ $\input{../output/tables/pa_math_se_paper.tex}$ for Panel~A math).
-This discrepancy arises because Stata's \texttt{reghdfe} applies a
-degrees-of-freedom correction that accounts for absorbed fixed effects when
-computing cluster-robust standard errors, while \texttt{statsmodels} uses the
-conventional sandwich estimator without that adjustment. This is a well-known
-cross-software difference and does not affect the point estimates or
-statistical significance conclusions.
+The replication matches the paper's Table~1 exactly across all entries.
+The Panel~A math DD coefficient is
+$\input{../output/tables/pa_math_coef.tex}\input{../output/tables/pa_math_stars.tex}$
+(s.e.\ $\input{../output/tables/pa_math_se.tex}$),
+and the Panel~B math DD coefficient is
+$\input{../output/tables/pb_math_coef.tex}\input{../output/tables/pb_math_stars.tex}$
+(s.e.\ $\input{../output/tables/pb_math_se.tex}$).
+The $R^2$ values and observation counts are identical.
+The analysis uses \texttt{pyfixest.feols()}, a Python port of Stata's
+\texttt{reghdfe}, which applies the same degrees-of-freedom correction when
+computing cluster-robust standard errors. As a result, both coefficients
+\emph{and} standard errors match the paper to three decimal places.
 
 % -----------------------------------------------------------------------
 \section{What I Learned}
