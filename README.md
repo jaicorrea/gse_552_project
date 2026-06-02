@@ -1,20 +1,19 @@
 # gse_552_project — Replication of Akhtari, Bau & Laliberté (2020)
 
-This repository replicates **Table 1, Panels A and B** (columns 1 and 2 — Math and Verbal SAT scores) from:
+This repository replicates **Figure 3** from:
 
 > Akhtari, Mitra, Natalie Bau, and Jean-William P. Laliberté. 2020.
 > "Affirmative Action and Pre-College Human Capital."
 > *NBER Working Paper* No. 27779. http://www.nber.org/papers/w27779
 
-The result of interest is a difference-in-differences estimate of the effect
-of the *Grutter v. Bollinger* (2003) Supreme Court ruling — which reinstated
-affirmative action in TX, LA, and MS — on mean SAT scores for underrepresented
-minorities (Panel A) and white students (Panel B).
+Figure 3 presents **synthetic control estimates** of the effect of the
+*Grutter v. Bollinger* (2003) Supreme Court ruling — which reinstated
+affirmative action in TX, LA, and MS — on mean math SAT scores for
+underrepresented minorities (URMs) and white students.
 
-**Paper's headline number:** Panel A math DD coefficient = **8.009***
-(s.e. 1.544).  Our replication obtains **8.009*** (s.e. 1.565) — exact
-match on the point estimate; minor SE difference due to Stata vs. Python
-degrees-of-freedom correction in clustered standard errors.
+**Paper's headline numbers:** URMs +10.778 pts, Whites +6.273 pts.
+**Our replication:** URMs +8.434 pts, Whites +5.239 pts (using the
+weights in the shipped replication package; see paper for discussion).
 
 ---
 
@@ -23,21 +22,27 @@ degrees-of-freedom correction in clustered standard errors.
 ```
 gse_552_project/
 ├── input/
-│   ├── SAT_workfingfile.dta      # Raw data (state×race×year panel, 1998–2010)
-│   └── data_dictionary.md        # Variable descriptions
+│   ├── SC_workingfile.dta         # State-year panel (TX+LA+MS collapsed)
+│   ├── SCweights/
+│   │   ├── nonURMm10.dta          # SC weights for whites (spec10)
+│   │   └── URMm10.dta             # SC weights for URMs (spec10)
+│   ├── SAT_workfingfile.dta       # Raw SAT panel (kept for reference)
+│   └── data_dictionary.md
 ├── code/
-│   ├── preprocess.py             # Load raw data → temp/clean_data.csv
-│   └── analysis.py               # DiD regressions → output/tables/*.tex
+│   ├── preprocess.py              # Merge SC data + weights → temp/sc_panel.csv
+│   └── analysis.py                # Apply weights, plot Figure 3, write scalars
 ├── output/
-│   ├── figures/                  # (empty for this replication)
+│   ├── figures/
+│   │   └── figure3.png            # Replication of Figure 3 (tracked in git)
 │   └── tables/
-│       └── table1_panels_ab.tex  # LaTeX table fragment consumed by paper.tex
-├── temp/                         # Intermediate files — gitignored
+│       ├── sc_dd_urm.tex          # Scalar: SC DD estimate for URMs
+│       └── sc_dd_non.tex          # Scalar: SC DD estimate for whites
+├── temp/                          # Intermediate files — gitignored
 ├── paper/
-│   ├── paper.tex                 # ~4-page write-up
-│   └── paper.pdf                 # Compiled output
-├── Makefile                      # Declarative pipeline
-├── run_all.sh                    # Convenience wrapper: make clean && make
+│   ├── paper.tex                  # 4-page write-up
+│   └── paper.pdf                  # Compiled output
+├── Makefile                       # Declarative pipeline
+├── run_all.sh                     # Convenience wrapper: make clean && make
 ├── .gitignore
 └── README.md
 ```
@@ -46,13 +51,12 @@ gse_552_project/
 
 ## Data Source
 
-Data were digitized by Akhtari, Bau & Laliberté from College Board public
-reports. The replication package (including `SAT_workfingfile.dta`) is
-available at:
+The SC_workingfile.dta and SCweights were prepared by the original authors
+using Stata's `synth` command. The replication package is available at:
 
 https://www.openicpsr.org/openicpsr/project/146381/version/V1/view
 
-The raw data file is committed directly to `input/` (≈ 1 MB).
+All input files are committed directly to `input/` (well under 25 MB total).
 See `input/data_dictionary.md` for variable descriptions.
 
 ---
@@ -64,14 +68,15 @@ See `input/data_dictionary.md` for variable descriptions.
 | Python | 3.10+ |
 | pandas | 2.x |
 | numpy | 1.x |
-| statsmodels | 0.14+ |
+| matplotlib | 3.x |
+| pyfixest | 0.x |
 | pyreadstat | 1.x |
 | pdflatex | TeX Live 2023 or MiKTeX |
 
 Install Python dependencies:
 
 ```bash
-pip install pandas numpy pyfixest pyreadstat
+pip install pandas numpy matplotlib pyfixest pyreadstat
 ```
 
 ---
@@ -81,7 +86,6 @@ pip install pandas numpy pyfixest pyreadstat
 ```bash
 git clone https://github.com/jaicorrea/gse_552_project.git
 cd gse_552_project
-# No data download needed — input/ is committed
 make
 ```
 
@@ -93,22 +97,16 @@ bash run_all.sh
 
 The compiled paper will be at `paper/paper.pdf`.
 
-To start from a completely clean state:
-
-```bash
-make clean
-make
-```
-
 ---
 
 ## Results
 
-| | Math (Paper) | Math (Ours) | Verbal (Paper) | Verbal (Ours) |
-|---|---|---|---|---|
-| **Panel A — URMs** | 8.009*** (1.544) | 8.009*** (1.565) | −0.634 (1.784) | −0.634 (1.808) |
-| **Panel B — Whites** | 4.048*** (0.984) | 4.048*** (1.024) | 0.034 (0.888) | 0.034 (0.925) |
+| | Paper | Our Replication |
+|---|---|---|
+| **URMs — SC DD estimate** | +10.778 pts | +\input{output/tables/sc_dd_urm.tex} pts |
+| **Whites — SC DD estimate** | +6.273 pts | +\input{output/tables/sc_dd_non.tex} pts |
 
-Point estimates match exactly. N and R² are identical to the paper.
-SE differences arise from Stata's `reghdfe` DOF correction vs. Python's
-sandwich estimator.
+Point estimates are directionally consistent and qualitatively identical.
+The gap from the paper's values reflects a difference between the weights
+in the shipped replication package and those used to produce the published
+figure (see paper Section 4 for full discussion).

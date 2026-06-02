@@ -1,225 +1,170 @@
 """
 analysis.py
 -----------
-Replicates Table 1 Panels A (URMs) and B (Whites) from:
+Replicates Figure 3 from:
   Akhtari, Bau & Laliberte (2020), "Affirmative Action and Pre-College
   Human Capital", NBER Working Paper 27779.
 
-Identification strategy: Difference-in-Differences (DiD).
-  y_ket = beta_DD (TreatedState_k x Post2003_t) + gamma*ban_kt
-          + alpha_k + alpha_t + alpha_e + epsilon_ket
+Uses the authors' preferred synthetic control specification (spec10):
+  Predictors: pre-treatment averages of math/verbal SAT scores and
+  test-take rates for both URM and non-URM students, plus education
+  spending predictors.
+  Treated unit: Texas (= TX + LA + MS collapsed).
+  Donor pool: 40 unaffected states (excl. ND, SD, WY, DC, FL, WA, NE, MI).
 
-Uses pyfixest.feols(), a Python port of Stata's reghdfe, which applies
-the same degrees-of-freedom correction for clustered SEs, giving
-coefficients and standard errors that match the .do file exactly.
+The SC weights (nonURMm10.dta, URMm10.dta) were computed by the authors
+using Stata's synth command with nested optimization; we apply them here
+to construct counterfactuals and reproduce the figure.
 
-Outputs written to output/tables/:
-  table1_panels_ab.tex  -- main LaTeX table fragment
-  pa_math_coef.tex, pa_math_se.tex, ...  -- scalar fragments for prose
+Outputs:
+  output/figures/figure3.png   -- two-panel replication of Figure 3
+  output/tables/sc_dd_urm.tex  -- implied SC DD estimate, URMs
+  output/tables/sc_dd_non.tex  -- implied SC DD estimate, Whites
 
 Usage:  python code/analysis.py
-Inputs: temp/clean_data.csv
+Inputs: temp/sc_panel.csv
 """
 
 import os
+import numpy as np
 import pandas as pd
-import pyfixest as pf
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-INPUT_FILE   = os.path.join("temp",  "clean_data.csv")
-OUTPUT_TABLE = os.path.join("output", "tables", "table1_panels_ab.tex")
-SCALARS_DIR  = os.path.join("output", "tables")
+INPUT_FILE   = os.path.join("temp",  "sc_panel.csv")
+OUT_FIG      = os.path.join("output", "figures", "figure3.png")
+OUT_TABLES   = os.path.join("output", "tables")
 
-os.makedirs(SCALARS_DIR, exist_ok=True)
-
-# ---------------------------------------------------------------------------
-# Load preprocessed data
-# ---------------------------------------------------------------------------
-df = pd.read_csv(INPUT_FILE)
-for col in ["mathscoretotalN", "verbalscoretotalN", "takesattotalN", "ban"]:
-    df[col] = pd.to_numeric(df[col], errors="coerce")
-
-df["treat_post"] = df["treat"] * df["post"]
+os.makedirs(os.path.join("output", "figures"), exist_ok=True)
+os.makedirs(OUT_TABLES, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# Paper's reported values (for console comparison only -- not used in output)
+# Load
 # ---------------------------------------------------------------------------
-PAPER = {
-    ("BH", "mathscoretotalN"):   dict(coef=8.009,  se=1.544),
-    ("W",  "mathscoretotalN"):   dict(coef=4.048,  se=0.984),
-    ("BH", "verbalscoretotalN"): dict(coef=-0.634, se=1.784),
-    ("W",  "verbalscoretotalN"): dict(coef=0.034,  se=0.888),
-}
+sc = pd.read_csv(INPUT_FILE)
 
 # ---------------------------------------------------------------------------
-# DiD regression using pyfixest.feols (Python port of Stata's reghdfe)
-# Matches Stata's reghdfe DOF correction for clustered SEs exactly.
+# Compute weighted counterfactual for each year
+# CF_g[t] = sum_j( w_j * math_g[j, t] )  for all donor states j
 # ---------------------------------------------------------------------------
-def run_did(data, group_col, outcome, weight_col="takesattotalN"):
-    """
-    Estimates:
-      outcome ~ treat_post + ban | geo_id + year + ethn_id
-    Weights: takesattotalN (aweight equivalent)
-    Clustered SE: geo_id (state)
-    """
-    sub = data[data[group_col] == 1].copy()
-    sub = sub.dropna(subset=[outcome, weight_col,
-                              "treat_post", "ban",
-                              "geo_id", "year", "ethn_id"])
-    sub = sub[sub[weight_col] > 0].copy()
+years = sorted(sc["year"].unique())
+cf_non = {}
+cf_urm = {}
 
-    # ethn_id FE only contributes if there is within-group variation
-    if sub["ethn_id"].nunique() > 1:
-        fe_spec = "geo_id + year + ethn_id"
-    else:
-        fe_spec = "geo_id + year"
-
-    fit = pf.feols(
-        fml=f"{outcome} ~ treat_post + ban | {fe_spec}",
-        data=sub,
-        weights=weight_col,
-        vcov={"CRV1": "geo_id"},
-    )
-
-    coef  = fit.coef()["treat_post"]
-    se    = fit.se()["treat_post"]
-    pval  = fit.pvalue()["treat_post"]
-    n_obs = fit._N
-    r2    = fit._r2
-
-    return {"coef": coef, "se": se, "pval": pval, "n_obs": n_obs, "r2": r2}
-
+for yr in years:
+    yr_data = sc[sc["year"] == yr]
+    # Include all states (Texas weight is 0 in donor pool weight files)
+    cf_non[yr] = (yr_data["math_nonURM"] * yr_data["wt_nonURM"]).sum()
+    cf_urm[yr]  = (yr_data["math_URM"]    * yr_data["wt_URM"]).sum()
 
 # ---------------------------------------------------------------------------
-# Run all four regressions
+# Extract treated unit (Texas = TX + LA + MS)
 # ---------------------------------------------------------------------------
-outcomes = [
-    ("mathscoretotalN",   "Math"),
-    ("verbalscoretotalN", "Verbal"),
-]
-panels = [
-    ("BH", "Panel A: URMs"),
-    ("W",  "Panel B: Whites"),
-]
+texas = sc[sc["geo_collapse"] == "Texas"].copy().sort_values("year")
+texas["CF_nonURM"] = texas["year"].map(cf_non)
+texas["CF_URM"]    = texas["year"].map(cf_urm)
 
-results = {}
-for grp, _ in panels:
-    for outcome, _ in outcomes:
-        results[(grp, outcome)] = run_did(df, grp, outcome)
+# Gap = treated - synthetic control
+texas["gap_nonURM"] = texas["math_nonURM"] - texas["CF_nonURM"]
+texas["gap_URM"]    = texas["math_URM"]    - texas["CF_URM"]
 
 # ---------------------------------------------------------------------------
-# Stars helper
+# DD coefficient: mean post-gap minus mean pre-gap
+# (mirrors Stata: reg gap post)
 # ---------------------------------------------------------------------------
-def stars(pval):
-    if pval < 0.01: return "***"
-    if pval < 0.05: return "**"
-    if pval < 0.10: return "*"
-    return ""
+pre  = texas[texas["year"] <  2004]
+post = texas[texas["year"] >= 2004]
+
+dd_non = post["gap_nonURM"].mean() - pre["gap_nonURM"].mean()
+dd_urm = post["gap_URM"].mean()    - pre["gap_URM"].mean()
 
 # ---------------------------------------------------------------------------
 # Console summary
 # ---------------------------------------------------------------------------
 print("=" * 62)
-print("Replication Result")
+print("Replication Result -- Figure 3 (Synthetic Control)")
 print("=" * 62)
-for grp, panel_label in panels:
-    r = results[(grp, "mathscoretotalN")]
-    p = PAPER[(grp, "mathscoretotalN")]
-    print(f"\n{panel_label} -- Math SAT")
-    print(f"  Paper reports : beta = {p['coef']:.3f}  (s.e. {p['se']:.3f})")
-    print(f"  We obtain     : beta = {r['coef']:.3f}{stars(r['pval'])}"
-          f"  (s.e. {r['se']:.3f})")
-    print(f"  Difference    : {r['coef'] - p['coef']:.4f}  "
-          f"(SE diff: {r['se'] - p['se']:.4f})")
+print(f"\n  Whites SC DD estimate : {dd_non:.3f}  (paper: 6.273)")
+print(f"  URMs   SC DD estimate : {dd_urm:.3f}  (paper: 10.778)")
+print(f"\n  Difference from paper:")
+print(f"    Whites: {dd_non - 6.273:.4f}")
+print(f"    URMs  : {dd_urm - 10.778:.4f}")
 print("=" * 62)
 print()
 
 # ---------------------------------------------------------------------------
-# Formatters
+# Write scalar .tex files
 # ---------------------------------------------------------------------------
-def fmt_coef(r): return f"{r['coef']:.3f}{stars(r['pval'])}"
-def fmt_se(r):   return f"({r['se']:.3f})"
-def fmt_n(r):    return f"{r['n_obs']:,}"
-def fmt_r2(r):   return f"{r['r2']:.3f}"
+def write_scalar(fname, val):
+    with open(os.path.join(OUT_TABLES, fname), "w") as f:
+        f.write(val)
+
+write_scalar("sc_dd_urm.tex", f"{dd_urm:.3f}")
+write_scalar("sc_dd_non.tex", f"{dd_non:.3f}")
+print(f"Scalar .tex files written to: {OUT_TABLES}/")
 
 # ---------------------------------------------------------------------------
-# Write LaTeX table fragment
+# Figure 3
+# Two panels: (a) Whites, (b) URMs
+# Replicates the style of Figure 3 in Akhtari et al. (2020)
 # ---------------------------------------------------------------------------
-latex = (
-    r"\begin{table}[h]" + "\n"
-    r"\centering" + "\n"
-    r"\caption{Replication of Table 1, Panels A \& B: Effect of AA on SAT Scores}" + "\n"
-    r"\label{tab:table1_ab}" + "\n"
-    r"\small" + "\n"
-    r"\begin{tabular}{lcc}" + "\n"
-    r"\toprule" + "\n"
-    r" & Math & Verbal \\" + "\n"
-    r" & (1)  & (2)    \\" + "\n"
-    r"\midrule" + "\n"
-    r"\multicolumn{3}{l}{\textit{Panel A: URMs (Black and Hispanic)}} \\[4pt]" + "\n"
-    f"DD coefficient & {fmt_coef(results[('BH','mathscoretotalN')])} & {fmt_coef(results[('BH','verbalscoretotalN')])} \\\\\n"
-    f"               & {fmt_se(results[('BH','mathscoretotalN')])}   & {fmt_se(results[('BH','verbalscoretotalN')])}   \\\\\n"
-    r"\\[-2pt]" + "\n"
-    f"Observations   & {fmt_n(results[('BH','mathscoretotalN')])} & {fmt_n(results[('BH','verbalscoretotalN')])} \\\\\n"
-    f"$R^2$          & {fmt_r2(results[('BH','mathscoretotalN')])} & {fmt_r2(results[('BH','verbalscoretotalN')])} \\\\\n"
-    r"State, Year, Race FE & X & X \\" + "\n"
-    r"\midrule" + "\n"
-    r"\multicolumn{3}{l}{\textit{Panel B: Whites}} \\[4pt]" + "\n"
-    f"DD coefficient & {fmt_coef(results[('W','mathscoretotalN')])} & {fmt_coef(results[('W','verbalscoretotalN')])} \\\\\n"
-    f"               & {fmt_se(results[('W','mathscoretotalN')])}   & {fmt_se(results[('W','verbalscoretotalN')])}   \\\\\n"
-    r"\\[-2pt]" + "\n"
-    f"Observations   & {fmt_n(results[('W','mathscoretotalN')])} & {fmt_n(results[('W','verbalscoretotalN')])} \\\\\n"
-    f"$R^2$          & {fmt_r2(results[('W','mathscoretotalN')])} & {fmt_r2(results[('W','verbalscoretotalN')])} \\\\\n"
-    r"State, Year, Race FE & X & X \\" + "\n"
-    r"\bottomrule" + "\n"
-    r"\end{tabular}" + "\n"
-    r"\begin{minipage}{\linewidth}" + "\n"
-    r"\smallskip" + "\n"
-    r"\footnotesize" + "\n"
-    r"\textit{Notes}: Difference-in-differences estimates of the effect of reinstating" + "\n"
-    r"affirmative action (AA) on mean SAT scores at the state--race--year level." + "\n"
-    r"The DD coefficient is the interaction of an indicator for a treated state" + "\n"
-    r"(Texas, Louisiana, Mississippi) and an indicator for post-2003" + "\n"
-    r"(post-\textit{Grutter v.\ Bollinger}). Regressions include controls for" + "\n"
-    r"AA-ban policy changes in control states. Cells are weighted by the number" + "\n"
-    r"of test-takers. Standard errors (in parentheses) are clustered at the" + "\n"
-    r"state level. $^{*}p<0.10$, $^{**}p<0.05$, $^{***}p<0.01$." + "\n"
-    r"\end{minipage}" + "\n"
-    r"\end{table}" + "\n"
+YEARS = texas["year"].values
+
+fig, axes = plt.subplots(1, 2, figsize=(11, 4.2), sharey=False)
+fig.subplots_adjust(wspace=0.35)
+
+PANEL_CFG = [
+    dict(
+        ax=axes[0],
+        treated=texas["math_nonURM"].values,
+        synth=texas["CF_nonURM"].values,
+        dd=dd_non,
+        title="(a) Whites",
+    ),
+    dict(
+        ax=axes[1],
+        treated=texas["math_URM"].values,
+        synth=texas["CF_URM"].values,
+        dd=dd_urm,
+        title="(b) URMs",
+    ),
+]
+
+xlabels = ["98","99","00","01","02","03","04","05","06","07","08","09","10"]
+
+for cfg in PANEL_CFG:
+    ax = cfg["ax"]
+    ax.plot(YEARS, cfg["treated"], color="black",
+            marker="o", linewidth=1.4, markersize=4, label="Treated States")
+    ax.plot(YEARS, cfg["synth"],   color="gray",
+            marker="D", linewidth=1.4, markersize=4, linestyle="--",
+            label="Synthetic Control Group")
+    ax.axvline(x=2003.5, color="red", linewidth=1.0, linestyle="-")
+    ax.set_xticks(YEARS)
+    ax.set_xticklabels(xlabels, fontsize=8)
+    ax.set_xlabel("Year", fontsize=9)
+    ax.set_ylabel("Average math SAT score", fontsize=9)
+    ax.set_title(cfg["title"], fontsize=10, fontweight="bold")
+    ax.legend(fontsize=7.5, loc="upper left")
+    ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.0f"))
+    # Annotate DD coefficient in lower right
+    ax.text(0.97, 0.04, f"DD coef: {cfg['dd']:.3f}",
+            transform=ax.transAxes, ha="right", va="bottom",
+            fontsize=8, color="black")
+    ax.grid(axis="y", alpha=0.25)
+
+fig.suptitle(
+    "Figure 3: Synthetic Control Estimates of the Effect of AA on SAT Math Scores\n"
+    "Akhtari, Bau & Laliberté (2020) — Replication using spec10 weights",
+    fontsize=9, y=1.02
 )
 
-with open(OUTPUT_TABLE, "w") as f:
-    f.write(latex)
-print(f"LaTeX table written to: {OUTPUT_TABLE}")
-
-# ---------------------------------------------------------------------------
-# Write scalar .tex files for every number used in paper.tex prose
-# ---------------------------------------------------------------------------
-def write_scalar(filename, value):
-    with open(os.path.join(SCALARS_DIR, filename), "w") as f:
-        f.write(value)
-
-rPA_math   = results[("BH", "mathscoretotalN")]
-rPA_verbal = results[("BH", "verbalscoretotalN")]
-rPB_math   = results[("W",  "mathscoretotalN")]
-rPB_verbal = results[("W",  "verbalscoretotalN")]
-
-write_scalar("pa_math_coef.tex",   f"{rPA_math['coef']:.3f}")
-write_scalar("pa_math_se.tex",     f"{rPA_math['se']:.3f}")
-write_scalar("pa_math_stars.tex",  stars(rPA_math["pval"]))
-write_scalar("pa_math_n.tex",      f"{rPA_math['n_obs']:,}")
-write_scalar("pa_math_r2.tex",     f"{rPA_math['r2']:.3f}")
-
-write_scalar("pb_math_coef.tex",   f"{rPB_math['coef']:.3f}")
-write_scalar("pb_math_se.tex",     f"{rPB_math['se']:.3f}")
-write_scalar("pb_math_stars.tex",  stars(rPB_math["pval"]))
-write_scalar("pb_math_n.tex",      f"{rPB_math['n_obs']:,}")
-write_scalar("pb_math_r2.tex",     f"{rPB_math['r2']:.3f}")
-
-# Paper's reported SEs (for the comparison sentence in paper.tex)
-write_scalar("pa_math_se_paper.tex", f"{PAPER[('BH','mathscoretotalN')]['se']:.3f}")
-write_scalar("pb_math_se_paper.tex", f"{PAPER[('W', 'mathscoretotalN')]['se']:.3f}")
-
-print(f"Scalar .tex files written to: {SCALARS_DIR}/")
+plt.tight_layout()
+plt.savefig(OUT_FIG, dpi=300, bbox_inches="tight")
+plt.close()
+print(f"Figure saved to: {OUT_FIG}")
