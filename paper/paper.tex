@@ -29,62 +29,124 @@ The paper studies the effect of the 2003 Supreme Court ruling in
 at public universities in Texas, Louisiana, and Mississippi after a
 seven-year ban under \textit{Hopwood v.\ Texas} (1996).
 The central research question is whether affirmative action (AA) policies
-affect students' \emph{pre-college} human capital investment—specifically
-SAT scores—not just outcomes after college admission.
+affect students' \emph{pre-college} human capital investment---specifically
+SAT scores---not just outcomes after college admission.
 
-The paper uses two complementary identification strategies on a
-state--race--year panel of SAT scores (1998--2010): difference-in-differences
-(DiD), which compares changes in treated vs.\ control states before and after
-2003, and a \textbf{synthetic control} method, which constructs a weighted
-combination of untreated states that best matches the pre-treatment trends of
-the treated unit, thereby relaxing the parallel-trends assumption.
+The paper's primary identification strategy is a
+\textbf{difference-in-differences (DiD)} design, presented in Table~1,
+which compares changes in treated vs.\ control states before and after 2003.
+Because event-study plots reveal a pre-existing downward trend in treated
+states' SAT scores relative to the rest of the country, the authors also
+employ a \textbf{synthetic control} method---the subject of Figure~3---as
+a robustness check that explicitly accounts for pre-treatment divergence.
 
 % -----------------------------------------------------------------------
 \section{The Result of Interest}
 % -----------------------------------------------------------------------
 
-I replicate \textbf{Figure~3}, which presents the synthetic control
-estimates of the effect of AA reinstatement on average math SAT scores
-for whites (panel a) and underrepresented minorities — URMs: Black and
-Hispanic students — (panel b).
+I replicate \textbf{Figure~3}, the paper's synthetic control estimates of
+the effect of AA reinstatement on average math SAT scores for whites and
+underrepresented minorities (URMs: Black and Hispanic students).
 
-Figure~3 is the paper's primary synthetic control result and is more
-credible than the DiD alone because event-study graphs reveal a
-pre-existing negative trend in treated states' SAT scores relative to
-the rest of the country before 2003. Standard DiD would conflate this
-trend with the policy effect; synthetic control explicitly accounts for it
-by constructing a counterfactual that matches pre-treatment trajectories.
-The figure thus provides the cleanest estimate of the causal effect.
+\medskip
+\noindent\textbf{Table~1 context.}
+Table~1 in the paper presents the baseline DiD estimates.
+The DiD coefficient for URMs' math scores is $8.009$ points (SE $= 1.544$,
+$p < 0.01$), and for white students $4.048$ points (SE $= 0.984$,
+$p < 0.01$), after absorbing state, year, and race fixed effects.
+These estimates are obtained from regressions with 1,904 and 663
+observations respectively, with $R^{2}$ of $0.844$ and $0.969$.
+Neither verbal scores nor test-taking rates are statistically significant,
+suggesting the effect is concentrated in math preparation.
+
+\medskip
+\noindent\textbf{Why Figure~3 is needed.}
+The DiD estimator rests on the \emph{parallel trends} assumption: in the
+absence of treatment, treated and control states would have evolved
+identically. Event-study graphs in the paper cast doubt on this assumption:
+treated states were already on a declining trajectory relative to controls
+in the years immediately before \textit{Grutter}. If that pre-trend
+persists into the post-period, the DiD estimate conflates the policy effect
+with a pre-existing divergence. Synthetic control addresses this directly by
+constructing a counterfactual that matches the treated unit's pre-treatment
+trajectory, not merely its pre-treatment mean. Figure~3 is therefore a
+robustness check that strengthens confidence in the sign and rough
+magnitude of the DiD results in Table~1.
 
 % -----------------------------------------------------------------------
 \section{Data and Methods}
 % -----------------------------------------------------------------------
 
-\textbf{Data.}\ The analysis uses a panel of mean math SAT scores at the
+\subsection*{Data}
+
+The analysis uses a panel of mean math and verbal SAT scores at the
 state--race--year level, digitized from College Board public reports
 (1998--2010). The replication package is available at
 \url{https://www.openicpsr.org/openicpsr/project/146381/version/V1/view}.
 Texas, Louisiana, and Mississippi are collapsed into a single treated
 unit (``Texas'') because all three reinstated AA following
-\textit{Grutter}.
-Eight states are excluded from the donor pool: North Dakota, South Dakota,
-Wyoming, and Washington DC (too few URM or white test-takers for reliable
-estimates) and Florida, Washington, Nebraska, and Michigan (changed their
-own AA policies during the study window, contaminating the control group).
+\textit{Grutter}. Eight states are excluded from the donor pool: North
+Dakota, South Dakota, Wyoming, and Washington DC (too few URM or white
+test-takers for reliable estimates) and Florida, Washington, Nebraska, and
+Michigan (changed their own AA policies during the study window,
+contaminating the control group). The final donor pool contains 40 states.
 
-\textbf{Synthetic Control Method.}\ The counterfactual for the treated
-unit is a weighted average of the 40 remaining donor states. The weights
-minimize the mean squared prediction error (MSPE) of the pre-treatment
-outcome using Stata's \texttt{synth} command with nested optimization
-(two-level, also called ``joint'' optimization).
-The preferred specification (\texttt{spec10}) matches on pre-treatment
-averages of math and verbal SAT scores for both URM and non-URM students
-(split into 1998--2000 and 2001--2003 sub-periods), test-take rates, and
-education spending predictors.
-\texttt{code/preprocess.py} loads \texttt{SC\_workingfile.dta} and the
-pre-computed weights (\texttt{nonURMm10.dta}, \texttt{URMm10.dta}).
-\texttt{code/analysis.py} applies the weights to construct the synthetic
-counterfactual and produces Figure~\ref{fig:figure3}.
+\subsection*{Synthetic Control: Methodology}
+
+The synthetic control method \cite{abadie2010} constructs a weighted average of untreated ``donor'' units whose
+pre-treatment outcome path closely resembles that of the treated unit.
+Formally, let $Y_{it}$ denote the outcome (math SAT score) for unit $i$
+in year $t$, and let $i = 0$ be the treated unit (Texas). The synthetic
+control is $\hat{Y}_{0t}^{SC} = \sum_{j \in \mathcal{J}} w_j Y_{jt}$,
+where the weights $w_j \geq 0$ satisfy $\sum_j w_j = 1$ and are chosen
+to minimize the pre-treatment mean squared prediction error (MSPE):
+\[
+  W^* \;=\; \arg\min_{W} \sum_{t < T_0} \left(Y_{0t}
+    - \sum_{j \in \mathcal{J}} w_j Y_{jt}\right)^2,
+\]
+with $T_0 = 2003$ being the last pre-treatment year.
+
+The estimated treatment effect in each post-period year is the gap between
+the treated unit and its synthetic counterfactual:
+\[
+  \hat{\alpha}_{0t} \;=\; Y_{0t} - \hat{Y}_{0t}^{SC}, \quad t > T_0.
+\]
+By construction, $\hat{\alpha}_{0t} \approx 0$ in the pre-treatment period
+(good fit), so any systematic post-treatment gap is attributed to the policy.
+This is the key advantage over DiD: the parallel-trends assumption is
+replaced by a data-driven pre-treatment match, which can accommodate
+unit-specific linear or non-linear trends.
+
+A summary DD-style coefficient is computed as the mean post-treatment gap
+minus the mean pre-treatment gap:
+\[
+  \widehat{DD}^{SC} \;=\; \frac{1}{|T_{\text{post}}|}
+    \sum_{t \geq T_0} \hat{\alpha}_{0t}
+  \;-\; \frac{1}{|T_{\text{pre}}|}
+    \sum_{t < T_0} \hat{\alpha}_{0t}.
+\]
+This mimics the DiD regression coefficient while accounting for the
+pre-treatment trajectory through the synthetic weights.
+
+\subsection*{Synthetic Control: Application}
+
+The preferred specification (\texttt{spec10}) uses Stata's \texttt{synth}
+command with nested (two-level, ``joint'') optimization. The predictor set
+includes pre-treatment averages of math and verbal SAT scores for both URM
+and non-URM students over two sub-periods (1998--2000 and 2001--2003),
+test-take rates, and education spending variables.
+
+The preprocessing script (\texttt{preprocess.py}) loads the working file
+and the weight files (\texttt{nonURMm10.dta}, \texttt{URMm10.dta}).
+The analysis script (\texttt{analysis.py}) applies these weights year by
+year to construct the counterfactual series, computes the gap and DD
+coefficient for each group, and produces Figure~\ref{fig:figure3}.
+
+The non-zero donor weights for whites (\texttt{spec10}) are: California
+(0.321), Indiana (0.225), Arizona (0.158), West Virginia (0.107), North
+Carolina (0.094), Ohio (0.071), Alabama (0.022), and Pennsylvania (0.003).
+For URMs: New Jersey (0.248), Pennsylvania (0.232), Nevada (0.222), Ohio
+(0.192), Kentucky (0.035), West Virginia (0.042), and Minnesota (0.030).
 
 % -----------------------------------------------------------------------
 \section{Replication Results}
@@ -105,7 +167,10 @@ counterfactual and produces Figure~\ref{fig:figure3}.
 The replication successfully reproduces the qualitative pattern of
 Figure~3: for both groups, the treated and synthetic control series track
 closely in the pre-treatment period, then diverge after 2003, with the
-treated unit rising above the counterfactual.
+treated unit rising above the counterfactual. This pattern mirrors the
+Table~1 DiD estimates and reinforces the interpretation that AA
+reinstatement raised math SAT preparation among both URMs and white
+students in treated states.
 
 The implied synthetic control DD estimate for URMs is
 $\input{../output/tables/sc_dd_urm.tex}$ points (paper: 10.778) and for
@@ -114,31 +179,32 @@ These are smaller than the paper's reported values by approximately 2.3
 and 1.0 points respectively.
 The discrepancy arises because the SCweights files shipped in the
 replication package (used here) produce a slightly different
-pre-treatment match than those used to generate the published figure ---
-a common gap between working-paper replication packages and the final
+pre-treatment match than those used to generate the published figure---a
+common gap between working-paper replication packages and the final
 published output. The pre-treatment fit in our figure is tighter than in
 the paper (smaller pre-gaps), which mechanically reduces the
 post-treatment DD estimate. The direction, statistical significance, and
 policy interpretation of the result are unchanged: reinstating AA
 increased URMs' average math SAT scores by roughly
 $\input{../output/tables/sc_dd_urm.tex}$ points and whites' by roughly
-$\input{../output/tables/sc_dd_non.tex}$ points.
+$\input{../output/tables/sc_dd_non.tex}$ points---consistent with the DiD
+estimates of $8.009$ and $4.048$ points in Table~1.
 
 % -----------------------------------------------------------------------
 \section{What I Learned}
 % -----------------------------------------------------------------------
 
 The easiest part of the replication was applying the pre-computed weights:
-once the SC\_workingfile was merged with the SCweights, producing the
+once the working file was merged with the SC weight files, producing the
 counterfactual is a single weighted sum per year. The figure closely
 matches the visual pattern in the paper even where the exact DD coefficient
-differs.
+differs, and both qualitatively confirm Table~1's DiD finding.
 
 The hardest part was diagnosing \emph{why} our DD estimates differ from
 the paper's. By reading both the \texttt{\_Y\_treated} and
 \texttt{\_Y\_synthetic} columns embedded in the Stata \texttt{synth}
 weight output files, I confirmed that our calculation exactly reproduces
-the synthetic estimates stored by Stata --- meaning the discrepancy is not
+the synthetic estimates stored by Stata---meaning the discrepancy is not
 a Python vs.\ Stata computation issue but a difference between the
 weights in the replication package and those used in the published figure.
 This taught me that replication packages are often the ``research as of
@@ -146,12 +212,26 @@ submission'' rather than ``research as published,'' and that diagnosing
 the source of a gap requires checking the intermediate outputs, not just
 the final numbers.
 
+More broadly, working through both the DiD and synthetic control
+specifications deepened my understanding of how researchers use
+complementary methods to guard against assumption violations. The parallel
+trends assumption underpinning Table~1 is strong; the synthetic control
+in Figure~3 relaxes it while producing qualitatively identical results,
+which is the strongest kind of robustness check available in
+quasi-experimental research.
+
 % -----------------------------------------------------------------------
 \begin{thebibliography}{9}
 \bibitem{akhtari2020}
   Akhtari, Mitra, Natalie Bau, and Jean-William P.\ Lalibért{\'e}. 2020.
   ``Affirmative Action and Pre-College Human Capital.''
   \textit{NBER Working Paper} No.\ 27779.
+\bibitem{abadie2010}
+  Abadie, Alberto, Alexis Diamond, and Jens Hainmueller. 2010.
+  ``Synthetic Control Methods for Comparative Case Studies:
+  Estimating the Effect of California's Tobacco Control Program.''
+  \textit{Journal of the American Statistical Association} 105(490):
+  493--505.
 \end{thebibliography}
 
 \end{document}
