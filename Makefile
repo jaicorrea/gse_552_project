@@ -14,7 +14,8 @@ temp/sc_panel.csv: input/SC_workingfile.dta \
 # ------------------------------------------------------------------
 # Step 2 — Analysis (produces Figure 3 and scalar .tex files)
 # ------------------------------------------------------------------
-output/figures/figure3.png output/tables/sc_dd_urm.tex output/tables/sc_dd_non.tex: \
+output/figures/figure3.png output/tables/sc_dd_urm.tex output/tables/sc_dd_non.tex \
+    output/tables/sc_diff_urm.tex output/tables/sc_diff_non.tex: \
     temp/sc_panel.csv code/analysis.py
 	python code/analysis.py
 
@@ -24,7 +25,9 @@ output/figures/figure3.png output/tables/sc_dd_urm.tex output/tables/sc_dd_non.t
 paper/paper.pdf: paper/paper.tex \
                  output/figures/figure3.png \
                  output/tables/sc_dd_urm.tex \
-                 output/tables/sc_dd_non.tex
+                 output/tables/sc_dd_non.tex \
+                 output/tables/sc_diff_urm.tex \
+                 output/tables/sc_diff_non.tex
 	cd paper && pdflatex paper.tex && pdflatex paper.tex
 
 # ------------------------------------------------------------------

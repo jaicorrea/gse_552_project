@@ -106,6 +106,8 @@ def write_scalar(fname, val):
 
 write_scalar("sc_dd_urm.tex", f"{dd_urm:.3f}")
 write_scalar("sc_dd_non.tex", f"{dd_non:.3f}")
+write_scalar("sc_diff_urm.tex", f"{10.778 - dd_urm:.1f}")
+write_scalar("sc_diff_non.tex", f"{6.273 - dd_non:.1f}")
 print(f"Scalar .tex files written to: {OUT_TABLES}/")
 
 # ---------------------------------------------------------------------------
