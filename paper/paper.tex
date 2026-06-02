@@ -101,13 +101,17 @@ Table~\ref{tab:table1_ab} presents my replication.
 
 \input{../output/tables/table1_panels_ab.tex}
 
-The point estimates match the paper's Table~1 to three decimal places:
-Panel A math coefficient = 8.009 (paper: 8.009) and Panel B math
-coefficient = 4.048 (paper: 4.048). The R-squared values and observation
-counts are identical. Standard errors are slightly larger than those reported
-in the paper (e.g., 1.565 vs.\ 1.544 for Panel A math). This discrepancy
-arises because Stata's \texttt{reghdfe} applies a degrees-of-freedom
-correction that accounts for the number of absorbed fixed effects when
+The point estimates match the paper's Table~1 exactly:
+Panel A math DD coefficient $= \input{../output/tables/pa_math_coef.tex}$
+(paper: $\input{../output/tables/pa_math_coef.tex}$) and
+Panel B math DD coefficient $= \input{../output/tables/pb_math_coef.tex}$
+(paper: $\input{../output/tables/pb_math_coef.tex}$).
+The $R^2$ values and observation counts are identical to those in the paper.
+Standard errors are slightly larger than those reported
+(e.g., $\input{../output/tables/pa_math_se.tex}$
+vs.\ $\input{../output/tables/pa_math_se_paper.tex}$ for Panel~A math).
+This discrepancy arises because Stata's \texttt{reghdfe} applies a
+degrees-of-freedom correction that accounts for absorbed fixed effects when
 computing cluster-robust standard errors, while \texttt{statsmodels} uses the
 conventional sandwich estimator without that adjustment. This is a well-known
 cross-software difference and does not affect the point estimates or

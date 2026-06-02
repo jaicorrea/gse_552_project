@@ -205,3 +205,41 @@ with open(OUTPUT_TABLE, "w") as f:
     f.write(latex)
 
 print(f"LaTeX table written to: {OUTPUT_TABLE}")
+
+# ---------------------------------------------------------------------------
+# Write individual scalar .tex files so paper.tex can \input every number
+# ---------------------------------------------------------------------------
+SCALARS_DIR = os.path.join("output", "tables")
+
+def write_scalar(filename, value):
+    """Write a bare value (no newline) to output/tables/<filename>.tex."""
+    path = os.path.join(SCALARS_DIR, filename)
+    with open(path, "w") as f:
+        f.write(value)
+
+rPA_math   = results[("BH", "mathscoretotalN")]
+rPA_verbal = results[("BH", "verbalscoretotalN")]
+rPB_math   = results[("W",  "mathscoretotalN")]
+rPB_verbal = results[("W",  "verbalscoretotalN")]
+
+# Panel A math
+write_scalar("pa_math_coef.tex",  f"{rPA_math['coef']:.3f}")
+write_scalar("pa_math_se.tex",    f"{rPA_math['se']:.3f}")
+write_scalar("pa_math_stars.tex", stars(rPA_math["pval"]))
+write_scalar("pa_math_n.tex",     f"{rPA_math['n_obs']:,}")
+write_scalar("pa_math_r2.tex",    f"{rPA_math['r2']:.3f}")
+
+# Panel B math
+write_scalar("pb_math_coef.tex",  f"{rPB_math['coef']:.3f}")
+write_scalar("pb_math_se.tex",    f"{rPB_math['se']:.3f}")
+write_scalar("pb_math_stars.tex", stars(rPB_math["pval"]))
+write_scalar("pb_math_n.tex",     f"{rPB_math['n_obs']:,}")
+write_scalar("pb_math_r2.tex",    f"{rPB_math['r2']:.3f}")
+
+# SE difference from paper (for discussion paragraph)
+paper_pa_se = 1.544
+paper_pb_se = 0.984
+write_scalar("pa_math_se_paper.tex", f"{paper_pa_se:.3f}")
+write_scalar("pb_math_se_paper.tex", f"{paper_pb_se:.3f}")
+
+print(f"Scalar .tex files written to: {SCALARS_DIR}/")
