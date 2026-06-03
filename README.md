@@ -103,8 +103,8 @@ The compiled paper will be at `paper/paper.pdf`.
 
 | | Paper | Our Replication |
 |---|---|---|
-| **URMs — SC DD estimate** | +10.778 pts | +\input{output/tables/sc_dd_urm.tex} pts |
-| **Whites — SC DD estimate** | +6.273 pts | +\input{output/tables/sc_dd_non.tex} pts |
+| **URMs — SC DD estimate** | +10.778 pts | +8.434 pts |
+| **Whites — SC DD estimate** | +6.273 pts | +5.239 pts |
 
 Point estimates are directionally consistent and qualitatively identical.
 The gap from the paper's values reflects a difference between the weights
