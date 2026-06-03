@@ -104,40 +104,54 @@ contaminating the control group). The final donor pool contains 40 states.
 
 \subsection*{Synthetic Control: Methodology}
 
-The synthetic control method \cite{abadie2010} constructs a weighted average of untreated ``donor'' units whose
-pre-treatment outcome path closely resembles that of the treated unit.
-Formally, let $Y_{it}$ denote the outcome (math SAT score) for unit $i$
-in year $t$, and let $i = 0$ be the treated unit (Texas). The synthetic
-control is $\hat{Y}_{0t}^{SC} = \sum_{j \in \mathcal{J}} w_j Y_{jt}$,
-where the weights $w_j \geq 0$ satisfy $\sum_j w_j = 1$ and are chosen
-to minimize the pre-treatment mean squared prediction error (MSPE):
+To understand synthetic control, it helps to first write DiD as a
+minimization problem \cite{synthdid_notebook}.
+The DiD estimator solves:
 \[
-  W^* \;=\; \arg\min_{W} \sum_{t < T_0} \left(Y_{0t}
-    - \sum_{j \in \mathcal{J}} w_j Y_{jt}\right)^2,
+  \hat{\tau}^{\,did} \;=\; \underset{\mu,\,\alpha,\,\delta,\,\tau}{\arg\min}
+    \sum_{i=1}^{N}\sum_{t=1}^{T}
+    \Bigl(Y_{it} - \bigl(\beta_0 + \alpha_i + \delta_t
+      + \tau\,Treated_{it}\bigr)\Bigr)^2,
 \]
-with $T_0 = 2003$ being the last pre-treatment year.
+where $\alpha_i$ and $\delta_t$ are unit and time fixed effects.
+Every observation receives equal weight; identification relies entirely on
+the parallel-trends assumption.
+
+Synthetic control modifies this by assigning a unit-specific weight
+$\hat{w}^{sc}_i$ to each observation \cite{synthdid_notebook}:
+\[
+  \hat{\tau}^{\,sc} \;=\; \underset{\delta,\,\tau}{\arg\min}
+    \sum_{i=1}^{N}\sum_{t=1}^{T}
+    \Bigl(Y_{it} - \delta_t - \tau\,Treated_{it}\Bigr)^2\,\hat{w}^{sc}_i,
+    \qquad \text{s.t.}\;\sum_i w_i = 1,\; w_i \geq 0.
+\]
+The weights $\hat{w}^{sc}_i$ are chosen so that the weighted average of
+donor-state outcomes closely tracks the treated unit's pre-treatment
+trajectory, minimizing the pre-treatment mean squared prediction error.
+Because only donor states enter the weighted average, the counterfactual
+is a \emph{data-driven} match rather than the parallel-trends assumption
+imposed by DiD.
 
 The estimated treatment effect in each post-period year is the gap between
 the treated unit and its synthetic counterfactual:
 \[
-  \hat{\alpha}_{0t} \;=\; Y_{0t} - \hat{Y}_{0t}^{SC}, \quad t > T_0.
+  \hat{\alpha}_{0t} \;=\; Y_{0t} - \hat{Y}_{0t}^{SC}, \quad t > T_0,
 \]
-By construction, $\hat{\alpha}_{0t} \approx 0$ in the pre-treatment period
-(good fit), so any systematic post-treatment gap is attributed to the policy.
-This is the key advantage over DiD: the parallel-trends assumption is
-replaced by a data-driven pre-treatment match, which can accommodate
-unit-specific linear or non-linear trends.
+where $\hat{Y}_{0t}^{SC} = \sum_{j} \hat{w}^{sc}_j\,Y_{jt}$ and
+$T_0 = 2003$ is the last pre-treatment year.
+By construction the pre-treatment gaps are near zero (good fit), so any
+systematic post-treatment divergence is attributed to the policy.
 
-A summary DD-style coefficient is computed as the mean post-treatment gap
-minus the mean pre-treatment gap:
+A summary DD-style coefficient is computed as:
 \[
-  \widehat{DD}^{SC} \;=\; \frac{1}{|T_{\text{post}}|}
-    \sum_{t \geq T_0} \hat{\alpha}_{0t}
-  \;-\; \frac{1}{|T_{\text{pre}}|}
-    \sum_{t < T_0} \hat{\alpha}_{0t}.
+  \widehat{DD}^{SC} \;=\;
+    \frac{1}{|T_{\text{post}}|}\sum_{t \geq T_0}\hat{\alpha}_{0t}
+  \;-\;
+    \frac{1}{|T_{\text{pre}}|}\sum_{t < T_0}\hat{\alpha}_{0t},
 \]
-This mimics the DiD regression coefficient while accounting for the
-pre-treatment trajectory through the synthetic weights.
+which mirrors the DiD regression coefficient while letting the
+pre-treatment trajectory—not just the pre-treatment mean—define the
+counterfactual.
 
 \subsection*{Synthetic Control: Application}
 
@@ -238,12 +252,10 @@ quasi-experimental research.
   Akhtari, Mitra, Natalie Bau, and Jean-William P.\ Lalibért{\'e}. 2020.
   ``Affirmative Action and Pre-College Human Capital.''
   \textit{NBER Working Paper} No.\ 27779.
-\bibitem{abadie2010}
-  Abadie, Alberto, Alexis Diamond, and Jens Hainmueller. 2010.
-  ``Synthetic Control Methods for Comparative Case Studies:
-  Estimating the Effect of California's Tobacco Control Program.''
-  \textit{Journal of the American Statistical Association} 105(490):
-  493--505.
+\bibitem{synthdid_notebook}
+  Course Notes. 2024.
+  ``Synthetic DiD'' [Jupyter Notebook].
+  \texttt{SynthDiD.ipynb}.
 \end{thebibliography}
 
 \end{document}
