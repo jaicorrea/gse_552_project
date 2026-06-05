@@ -10,7 +10,8 @@
 
 \title{Replicating Figure~3 from\\
        Akhtari, Bau, and Lalibért{\'e} (2020)}
-\author{Jai Correa}
+\author{Jai Correa\\
+\small\url{https://github.com/jaicorrea/gse_552_project}}
 \date{\today}
 
 \begin{document}
@@ -134,7 +135,7 @@ is a \emph{data-driven} match rather than the parallel-trends assumption
 imposed by DiD.
 
 The estimated treatment effect in each post-period year is the gap between
-the treated unit and its synthetic counterfactual:
+the treated unit and its synthetic counterfactual \cite{abadie2010}:
 \[
   \hat{\alpha}_{0t} \;=\; Y_{0t} - \hat{Y}_{0t}^{SC}, \quad t > T_0,
 \]
@@ -143,7 +144,7 @@ $T_0 = 2003$ is the last pre-treatment year.
 By construction the pre-treatment gaps are near zero (good fit), so any
 systematic post-treatment divergence is attributed to the policy.
 
-A summary DD-style coefficient is computed as:
+A summary DD-style coefficient is computed as \cite{abadie2010}:
 \[
   \widehat{DD}^{SC} \;=\;
     \frac{1}{|T_{\text{post}}|}\sum_{t \geq T_0}\hat{\alpha}_{0t}
@@ -264,6 +265,12 @@ quasi-experimental research.
   ``Synthetic DiD'' [Course Notebook].
   California Polytechnic State University.
   \texttt{SynthDiD.ipynb}.
+\bibitem{abadie2010}
+  Abadie, Alberto, Alexis Diamond, and Jens Hainmueller. 2010.
+  ``Synthetic Control Methods for Comparative Case Studies:
+  Estimating the Effect of California's Tobacco Control Program.''
+  \textit{Journal of the American Statistical Association} 105(490):
+  493--505.
 \end{thebibliography}
 
 \end{document}
